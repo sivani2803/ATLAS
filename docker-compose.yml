@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # MongoDB Database Service (Optional if using MongoDB Atlas cloud URI)
+  mongo:
+    image: mongo:7.0
+    container_name: atlas_landslide_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: landslide_db
+    volumes:
+      - mongo_data:/data/db
+
+  # Backend Express API & Telemetry Service
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: atlas_landslide_server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/landslide_db
+      - USE_MEMORY_DB=false
+      - JWT_SECRET=production_secret_landslide_earth_intel_2026_xyz
+      - JWT_EXPIRES_IN=7d
+      - CLIENT_URL=http://localhost:5173
+      - SENSOR_INGESTION_KEY=landslide_edge_telemetry_secure_key_9981
+    depends_on:
+      - mongo
+
+  # Frontend React & Nginx Service
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: atlas_landslide_client
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+      - VITE_SOCKET_URL=http://localhost:5000
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
+    driver: local
